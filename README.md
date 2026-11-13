@@ -16,7 +16,7 @@
 | [code/light_bar_detect.py](code/light_bar_detect.py) | 同一套流水线的纯 numpy + Pillow 复刻（本机没装 OpenCV 时用） |
 | [code/make_demo_image.py](code/make_demo_image.py) | 生成模拟测试图 `code/demo_board.png` |
 | [results/](results/) | 各阶段结果图与运行日志 |
-| [docs/upload_manifest.md](docs/upload_manifest.md) | 往 GitHub 网页端逐个建文件时的上传顺序清单 |
+| [docs/00-environment.md](docs/00-environment.md) | 开发环境准备：C++/CMake/git、OpenCV、ROS2 Humble 与验证命令 |
 | [.gitignore](.gitignore) | 忽略构建产物、缓存、IDE 配置 |
 
 ---
