@@ -1,0 +1,11 @@
+# 构建产物，不提交
+cpp_basics/build/
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
+
+# 编辑器 / 系统
+.vscode/
+*.swp
+.DS_Store
+__pycache__/
