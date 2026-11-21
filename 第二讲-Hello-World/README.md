@@ -23,9 +23,8 @@ hw2/
 │       ├── package.xml
 │       ├── CMakeLists.txt
 │       ├── include/hw2_mean/mean_length.hpp # 8.1 的声明复制进包
-│       ├── include/hw2_mean/topics.hpp      # 话题名集中在这里
-│       └── src/mean_length.cpp              # 8.1 的定义复制进包
-│       └── src/length_publisher.cpp         # 发布节点
+│       ├── src/mean_length.cpp              # 8.1 的定义复制进包
+│       ├── src/length_publisher.cpp         # 发布节点
 │       └── src/mean_node.cpp                # 均值节点
 └── README.md
 ```
@@ -61,26 +60,24 @@ cmake --build build --parallel                 # 编译 + 链接库和 cpp_lab
 echo $?                                        # 0 = 全部通过
 ```
 
-实测输出（10 个用例全部 PASS，退出码 0）：
+实测输出（10 个用例全部通过，退出码 0）：
 
 ```
-== meanLength ==
-[PASS] 空数组 -> nullopt
-[PASS] 40/60/80 均值 60
-[PASS] 单元素均值 5
-[PASS] {-5,5} 均值 0（合法的 0）
-[PASS] 60/61/62 均值 61
-== countAtLeast ==
-[PASS] 阈值 60：恰好等于的 60 要算进去 -> 2
-[PASS] 阈值 40：全部不小于 -> 3
-[PASS] 阈值 100：一个都没有 -> 0
-[PASS] 空数组 -> 0
-[PASS] 全部恰好等于阈值 -> 3
+通过  空数组没有均值
+通过  40 60 80 的均值是 60
+通过  只有一个数 5
+通过  -5 和 5 的均值是 0
+通过  60 61 62 的均值是 61
+通过  阈值 60：60 和 80 一共 2 个
+通过  阈值 40：三个都不小于 40
+通过  阈值 100：一个都没有
+通过  空数组个数是 0
+通过  三个都等于阈值，全算
 
-ALL TESTS PASSED
+全部用例通过
 ```
 
-故意写坏一个结果（把期望值改错）时，程序会打印 `[FAIL]` 并 `return 1`，`echo $?` 得到 1 —— 这就是"结果不对时返回非零值"。
+故意写坏一个结果（把期望值改错）时，程序会打印 `失败` 并 `return 1`，`echo $?` 得到 1 —— 这就是"结果不对时返回非零值"。
 
 ### 3.2 8.2 的 ROS 2 包
 
@@ -147,7 +144,7 @@ average rate: 0.666        # /mean_length（3 条发 2 条，空数组那条不�
 - `Float64MultiArray` 字段：`layout`（`MultiArrayLayout`，本作业不用）与 `data`（`float64[]`），长度数组就放在 `data` 里。
 - `Float64` 字段：`float64 data`，均值放在这里。
 - 两个节点都用默认 QoS：`keep last` / `depth 10` / `reliable` / `volatile`，所以能正常配对。
-- 话题名定义在 `include/hw2_mean/topics.hpp` 的两个常量里，两个节点都引用它，改名字只改一处。
+- 话题名直接写在两个节点的代码里：`length_publisher.cpp:16` 的 `"lengths"`、`mean_node.cpp:15` 的 `"mean_length"` 和 `mean_node.cpp:17` 的 `"lengths"`；改名字这三处要一起改。
 
 ---
 
@@ -155,20 +152,20 @@ average rate: 0.666        # /mean_length（3 条发 2 条，空数组那条不�
 
 | 第 N 组 | 发布节点发出（`/lengths.data`） | 均值节点日志 | `/mean_length` 上看到 |
 | --- | --- | --- | --- |
-| 1 | `[40, 60, 80]` | `收到 3 个长度，均值 = 60.0，已发布到 mean_length` | `60.0` |
-| 2 | `[10, 20]` | `收到 2 个长度，均值 = 15.0，已发布到 mean_length` | `15.0` |
-| 3 | `[ ]`（空数组） | `收到空数组，跳过发布`（WARN） | **没有消息**（约 2 秒空档） |
+| 1 | `[40, 60, 80]` | `收到 3 个数，均值 60.0` | `60.0` |
+| 2 | `[10, 20]` | `收到 2 个数，均值 15.0` | `15.0` |
+| 3 | `[ ]`（空数组） | `[WARN] 收到空数组，跳过发布` | **没有消息**（约 2 秒空档） |
 | 4 | `[40, 60, 80]` | 同第 1 行 | `60.0` |
 
 实际日志（节选）：
 
 ```
-[length_publisher] 第 1 组：发布 3 个长度 [40, 60, 80]
-[length_publisher] 第 2 组：发布 2 个长度 [10, 20]
-[length_publisher] 第 3 组：发布 0 个长度 [空数组]
-[mean_node] 收到 3 个长度，均值 = 60.0，已发布到 mean_length
-[mean_node] 收到 2 个长度，均值 = 15.0，已发布到 mean_length
-[mean_node] 收到空数组，跳过发布
+[length_publisher] 发布第 1 组，3 个数
+[length_publisher] 发布第 2 组，2 个数
+[length_publisher] 发布第 3 组，0 个数
+[mean_node] 收到 3 个数，均值 60.0
+[mean_node] 收到 2 个数，均值 15.0
+[mean_node] [WARN] 收到空数组，跳过发布
 ```
 
 所以 `/mean_length` 上的序列是 `60.0, 15.0, 60.0, 15.0, ...`，两条之间有时 1 秒、有时 2 秒——**空数组那一条被跳过，所以平均频率不是 1 Hz 而是 0.667 Hz**。这正是"空数组不发布"的直接证据。
@@ -191,12 +188,12 @@ average rate: 0.666        # /mean_length（3 条发 2 条，空数组那条不�
 | `std::optional` 找不到 / 编译报 `std::optional is not a member` | 默认只到 C++14 | 两个工程都设置 `CMAKE_CXX_STANDARD 17` |
 | 均值为 0 或小数被吞 | `sum / lengths.size()` 里 `size()` 是整数，整数除法会截断 | 先 `static_cast<double>(lengths.size())` 再除 |
 | 测试里浮点数比较偶尔失败 | 二进制浮点无法精确表示 | 用 `std::fabs(a - b) < 1e-9` 而不是 `==` |
-| `fatal error: cpp_basics/mean_length.hpp: No such file` | 头文件目录没告诉编译器 | `target_include_directories(hw2_cpp_basics PUBLIC include)`，并让可执行文件链接这个库 |
+| `fatal error: cpp_basics/mean_length.hpp: No such file` | 头文件目录没告诉编译器 | `target_include_directories(basics PUBLIC include)`，并让 cpp_lab 链接 `basics` |
 | 链接报 `undefined reference to meanLength` | 定义所在的 `.cpp` 没进 `add_library` | 把 `src/mean_length.cpp`、`src/count_at_least.cpp` 都列进库的源文件 |
 | `ros2 run hw2_mean length_publisher` 报找不到可执行文件 | 没安装 / 没 source 工作空间 | 必须有 `install(TARGETS ... DESTINATION lib/${PROJECT_NAME})`，并 `source install/setup.bash` |
-| 均值节点收不到消息 | 话题名拼错、类型或 QoS 不匹配、订阅者被销毁、没在 spin | 两个节点都用 `topics.hpp` 的常量；检查 `ros2 topic info -v`；订阅者保存在成员变量里；`rclcpp::spin()` 持续运行 |
+| 均值节点收不到消息 | 话题名拼错、类型或 QoS 不匹配、订阅者被销毁、没在 spin | 两个节点里的话题名必须一字不差（`"lengths"`）；检查 `ros2 topic info -v`；订阅者保存在成员变量里；`rclcpp::spin()` 持续运行 |
 | 别人的节点数据混进来 | 同网段多个 ROS 2 用户共享 DDS 域 | 每个终端 `export ROS_LOCALHOST_ONLY=1` |
-| `ament_target_dependencies` 之后又 `target_link_libraries` 会不会冲突 | 前者加 ROS 依赖，后者加自己的静态库，二者不冲突 | 保持顺序：先 `ament_target_dependencies`，再 `target_link_libraries(节点 hw2_cpp_basics)` |
+| 均值节点想复用 `meanLength` 怎么链接 | ROS 包没有为 8.1 单独建库 | 直接把 `src/mean_length.cpp` 一起编进 `mean_node`：`add_executable(mean_node src/mean_node.cpp src/mean_length.cpp)`，再 `target_include_directories(mean_node PRIVATE include)` |
 | 改代码每次都要重新 `colcon build` | 普通安装是拷贝 | 用 `--symlink-install` 加速（改 CMakeLists 时仍需重新 build） |
 
 ---
@@ -205,8 +202,8 @@ average rate: 0.666        # /mean_length（3 条发 2 条，空数组那条不�
 
 所有可能的现场改动、对应文件行号、改完怎么验证，都写在 [答辩速查.md](答辩速查.md) 里，包括：
 
-- 改话题名：`ros2_ws/src/hw2_mean/include/hw2_mean/topics.hpp:9` 与 `:12`
-- 改发布频率：`ros2_ws/src/hw2_mean/src/length_publisher.cpp:33`
-- 改数据组：`length_publisher.cpp:26-30`
-- 改计算规则（例：均值 → 中位数）：`cpp_basics/src/mean_length.cpp:3-16`（ROS 包里的副本同步改），现有测试用例仍然全部成立
-- 改阈值：`cpp_basics/src/cpp_lab.cpp:55`
+- 改话题名：`ros2_ws/src/hw2_mean/src/length_publisher.cpp:16`（`"lengths"`）、`mean_node.cpp:15`（`"mean_length"`）、`mean_node.cpp:17`（订阅 `"lengths"`）
+- 改发布频率：`ros2_ws/src/hw2_mean/src/length_publisher.cpp:17`
+- 改数据组：`length_publisher.cpp:24-27`
+- 改计算规则（例：均值 → 中位数）：`cpp_basics/src/mean_length.cpp:3-19`（ROS 包里的副本 `ros2_ws/src/hw2_mean/src/mean_length.cpp:3-11` 同步改），现有测试用例仍然全部成立
+- 改阈值：`cpp_basics/src/cpp_lab.cpp:46-47`

@@ -1,71 +1,63 @@
 #include <cmath>
-#include <cstddef>
 #include <iostream>
 #include <optional>
-#include <string>
 #include <vector>
 
 #include "cpp_basics/mean_length.hpp"
 
-namespace
+using std::cout;
+using std::vector;
+
+int failed = 0;
+
+void check(bool ok, const char * name)
 {
-
-int failures = 0;
-
-constexpr double kEpsilon = 1e-9;
-
-void check(bool ok, const std::string & name)
-{
-  if (ok) {
-    std::cout << "[PASS] " << name << '\n';
-  } else {
-    std::cout << "[FAIL] " << name << '\n';
-    ++failures;
-  }
+    if (ok)
+    {
+        cout << "通过  " << name << "\n";
+    }
+    else
+    {
+        cout << "失败  " << name << "\n";
+        failed++;
+    }
 }
-
-// 浮点数不能直接用 == 比较，允许 1e-9 的误差
-void expectOptional(double want, const std::optional<double> & got, const std::string & name)
-{
-  check(got.has_value() && std::fabs(*got - want) < kEpsilon, name);
-}
-
-void expectEmpty(const std::optional<double> & got, const std::string & name)
-{
-  check(!got.has_value(), name);
-}
-
-void expectSize(std::size_t want, std::size_t got, const std::string & name)
-{
-  check(want == got, name);
-}
-
-}  // namespace
 
 int main()
 {
-  std::cout << "== meanLength ==\n";
-  expectEmpty(meanLength(std::vector<double>{}), "空数组 -> nullopt");
-  expectOptional(60.0, meanLength(std::vector<double>{40.0, 60.0, 80.0}), "40/60/80 均值 60");
-  expectOptional(5.0, meanLength(std::vector<double>{5.0}), "单元素均值 5");
-  expectOptional(0.0, meanLength(std::vector<double>{-5.0, 5.0}), "{-5,5} 均值 0（合法的 0）");
-  expectOptional(61.0, meanLength(std::vector<double>{60.0, 61.0, 62.0}), "60/61/62 均值 61");
+    const double eps = 1e-6;
 
-  std::cout << "== countAtLeast ==\n";
-  expectSize(2, countAtLeast(std::vector<double>{40.0, 60.0, 80.0}, 60.0),
-    "阈值 60：恰好等于的 60 要算进去 -> 2");
-  expectSize(3, countAtLeast(std::vector<double>{40.0, 60.0, 80.0}, 40.0),
-    "阈值 40：全部不小于 -> 3");
-  expectSize(0, countAtLeast(std::vector<double>{40.0, 60.0, 80.0}, 100.0),
-    "阈值 100：一个都没有 -> 0");
-  expectSize(0, countAtLeast(std::vector<double>{}, 60.0), "空数组 -> 0");
-  expectSize(3, countAtLeast(std::vector<double>{50.0, 50.0, 50.0}, 50.0),
-    "全部恰好等于阈值 -> 3");
+    // meanLength
+    check(!meanLength(vector<double>{}).has_value(), "空数组没有均值");
 
-  if (failures == 0) {
-    std::cout << "\nALL TESTS PASSED\n";
+    std::optional<double> m = meanLength(vector<double>{40.0, 60.0, 80.0});
+    check(m.has_value() && std::fabs(*m - 60.0) < eps, "40 60 80 的均值是 60");
+
+    m = meanLength(vector<double>{5.0});
+    check(m.has_value() && std::fabs(*m - 5.0) < eps, "只有一个数 5");
+
+    m = meanLength(vector<double>{-5.0, 5.0});
+    check(m.has_value() && std::fabs(*m - 0.0) < eps, "-5 和 5 的均值是 0");
+
+    m = meanLength(vector<double>{60.0, 61.0, 62.0});
+    check(m.has_value() && std::fabs(*m - 61.0) < eps, "60 61 62 的均值是 61");
+
+    // countAtLeast
+    check(countAtLeast(vector<double>{40.0, 60.0, 80.0}, 60.0) == 2,
+          "阈值 60：60 和 80 一共 2 个");
+    check(countAtLeast(vector<double>{40.0, 60.0, 80.0}, 40.0) == 3,
+          "阈值 40：三个都不小于 40");
+    check(countAtLeast(vector<double>{40.0, 60.0, 80.0}, 100.0) == 0,
+          "阈值 100：一个都没有");
+    check(countAtLeast(vector<double>{}, 60.0) == 0, "空数组个数是 0");
+    check(countAtLeast(vector<double>{50.0, 50.0, 50.0}, 50.0) == 3,
+          "三个都等于阈值，全算");
+
+    if (failed > 0)
+    {
+        cout << "\n有 " << failed << " 个用例没通过\n";
+        return 1;
+    }
+    cout << "\n全部用例通过\n";
     return 0;
-  }
-  std::cout << "\n" << failures << " TEST(S) FAILED\n";
-  return 1;  // 有失败时返回非零，交给检查方/CI 判断
 }

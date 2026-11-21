@@ -1,12 +1,14 @@
-#pragma once
+#ifndef MEAN_LENGTH_HPP
+#define MEAN_LENGTH_HPP
 
 #include <cstddef>
 #include <optional>
 #include <vector>
 
-// 一组灯条长度（单位：像素）的均值。
-// 数组为空时没有结果，返回 std::nullopt —— 不是 0，也不是 nan。
+// 求一组长度的平均值，空数组返回 nullopt
 std::optional<double> meanLength(const std::vector<double> & lengths);
 
-// 统计不小于阈值 threshold 的个数（“不小于”＝大于等于，边界要算进去）。
+// 数一下有多少个长度不小于 threshold
 std::size_t countAtLeast(const std::vector<double> & lengths, double threshold);
+
+#endif
